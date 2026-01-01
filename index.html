@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETERNALGY Solar Calculator</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+        }
+        /* Custom styles for cleaner number inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        .font-mono { 
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; 
+        }
+    </style>
+
+    <!-- Core Libraries (React & Babel) -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        /*******************************************************
+         * 1. CONSTANTS & ICONS
+         *******************************************************/
+        const Icons = {
+            Sun: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>,
+            Zap: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+            Percent: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>,
+            Banknote: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>,
+            Activity: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+            FileText: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>,
+            LayoutGrid: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>,
+            Coins: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>,
+            TrendingDown: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>,
+            CheckCircle2: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
+            Plus: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+            Calculator: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
+            Tags: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="6.5" cy="9.5" r=".5"/><circle cx="14" cy="6.5" r=".5"/></svg>,
+            CreditCard: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>,
+            ThumbsUp: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+        };
+
+        const BASE_ENERGY_RATE = 0.2703;
+        const HIGH_USAGE_PENALTY = 0.10;
+        const CAPACITY_RATE = 0.0455;
+        const NETWORK_RATE = 0.1285;
+        const RETAIL_THRESHOLD = 600;
+        const RETAIL_CHARGE_AMOUNT = 10.00;
+        const SST_THRESHOLD = 600;
+        const SST_RATE = 0.08;
+        const KWTBB_RATE = 0.016;
+
+        const SYSTEM_PRICES = {
+            8: 18540, 9: 19579, 10: 20619, 11: 23333, 12: 24385, 13: 25532, 14: 27230,
+            15: 28258, 16: 29994, 17: 31040, 18: 32321, 19: 35027, 20: 36414, 21: 37541,
+            22: 38684, 23: 39719, 24: 40761, 25: 41775, 26: 42988, 27: 44012, 28: 45037,
+            29: 46106, 30: 47129, 31: 49092, 32: 50610, 33: 51640, 34: 52698, 35: 53731,
+            36: 54765, 37: 55803, 38: 56845, 39: 58268, 40: 59307, 41: 60355, 42: 61385,
+            43: 62422, 44: 63463, 45: 64499, 46: 65535, 47: 66577, 48: 67618
+        };
+
+        const EPP_RATES = {
+            "Public Bank": { 6: 2.5, 12: 3.5, 18: 4.0, 24: 5.5, 36: 6.0, 48: 8.0, 60: 10.0 },
+            "CIMB": { 6: 2.5, 12: 3.5 },
+            "MBB (Maybank)": { 6: 2.5, 12: 3.5, 24: 5.5, 36: 6.0, 48: 8.0, 60: 10.0 },
+            "HLB (Hong Leong)": { 12: 3.5, 24: 5.5, 36: 6.0, 48: 8.0, 60: 10.0 },
+            "AM (AmBank)": { 24: 7.0, 36: 9.0 },
+            "UOB": { 6: 2.5, 12: 3.5, 24: 5.5, 48: 8.5, 68: 11.5 },
+            "OCBC": { 6: 4.0, 12: 5.0, 18: 6.0, 24: 7.0, 36: 8.0, 48: 9.0 }
+        };
+
+        /*******************************************************
+         * 2. UTILS
+         *******************************************************/
+        const getEEIRate = (kwh) => {
+            if (kwh <= 0) return 0;
+            if (kwh <= 200) return 0.250;
+            if (kwh <= 250) return 0.245;
+            if (kwh <= 300) return 0.225;
+            if (kwh <= 350) return 0.210;
+            if (kwh <= 400) return 0.170;
+            if (kwh <= 450) return 0.145;
+            if (kwh <= 500) return 0.120;
+            if (kwh <= 550) return 0.105;
+            if (kwh <= 600) return 0.090;
+            if (kwh <= 650) return 0.075;
+            if (kwh <= 700) return 0.055;
+            if (kwh <= 750) return 0.045;
+            if (kwh <= 800) return 0.040;
+            if (kwh <= 850) return 0.025;
+            if (kwh <= 900) return 0.010;
+            if (kwh <= 1000) return 0.005;
+            return 0;
+        };
+
+        const calculateEEI = (kWh) => {
+            const rate = getEEIRate(kWh);
+            return -(kWh * rate);
+        };
+
+        const calculateBill = (kWh, afaRate) => {
+            const effectiveUsageRate = kWh > 1500 ? BASE_ENERGY_RATE + HIGH_USAGE_PENALTY : BASE_ENERGY_RATE;
+            const usageCost = kWh * effectiveUsageRate;
+            const capacityCost = kWh * CAPACITY_RATE;
+            const networkCost = kWh * NETWORK_RATE;
+            const afaCost = kWh * afaRate;
+            const retailCharge = kWh > RETAIL_THRESHOLD ? RETAIL_CHARGE_AMOUNT : 0;
+            const kwtbbBase = usageCost + capacityCost + networkCost;
+            const kwtbbCost = kwtbbBase * KWTBB_RATE;
+            let sstCost = 0;
+            if (kWh > SST_THRESHOLD) {
+                const taxableKWh = kWh - SST_THRESHOLD;
+                const costPerUnit = effectiveUsageRate + CAPACITY_RATE + NETWORK_RATE + afaRate;
+                const taxableVariableCost = taxableKWh * costPerUnit;
+                const totalTaxableBase = taxableVariableCost + retailCharge;
+                sstCost = Math.max(0, totalTaxableBase * SST_RATE);
+            }
+            const eeiCost = calculateEEI(kWh);
+            const totalBill = usageCost + capacityCost + networkCost + afaCost + retailCharge + kwtbbCost + sstCost + eeiCost;
+            return { usageCost, capacityCost, networkCost, afaCost, retailCharge, kwtbbCost, sstCost, eeiCost, totalBill, unitRate: effectiveUsageRate };
+        };
+
+        const calculateKWhFromBill = (targetBill, afaRate) => {
+            if (!targetBill || targetBill <= 0) return 0;
+            let low = 0, high = 100000, mid = 0, iterations = 0;
+            while (high - low > 0.0001 && iterations < 100) {
+                mid = (low + high) / 2;
+                const res = calculateBill(mid, afaRate);
+                if (res.totalBill < targetBill) low = mid;
+                else high = mid;
+                iterations++;
+            }
+            return mid;
+        };
+
+        const formatCurrency = (val) => new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(val);
+
+        /*******************************************************
+         * 3. COMPONENTS
+         *******************************************************/
+
+        const InputSection = ({ billAmount, setBillAmount, afa, setAfa }) => {
+            return (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <Icons.Banknote className="w-5 h-5 text-green-600" />
+                        Energy Parameters
+                    </h2>
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Monthly TNB Bill Amount (RM)</label>
+                            <div className="relative">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-serif">RM</div>
+                                <input 
+                                    type="number" step="0.01" 
+                                    value={billAmount === 0 ? '' : billAmount} 
+                                    onChange={(e) => setBillAmount(Math.max(0, Number(e.target.value)))} 
+                                    className="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-lg font-medium" 
+                                    placeholder="e.g. 250.00" 
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">AFA / ICPT Rate (RM/kWh)</label>
+                            <div className="relative">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Activity className="w-4 h-4" /></div>
+                                <input 
+                                    type="number" step="0.0001" 
+                                    value={afa} 
+                                    onChange={(e) => setAfa(Number(e.target.value))} 
+                                    className="w-full pl-10 pr-12 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-lg font-medium" 
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">RM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const BillSummary = ({ data, usage, afaRate }) => {
+            return (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-xl p-6 shadow-lg">
+                            <p className="text-indigo-100 text-sm font-medium mb-1">Estimated Usage</p>
+                            <div className="text-4xl font-bold flex items-baseline gap-2">{usage.toFixed(2)}<span className="text-lg font-normal text-indigo-200">kWh</span></div>
+                        </div>
+                        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                            <p className="text-slate-500 text-sm font-medium mb-1">Average Cost</p>
+                            <div className="text-4xl font-bold text-slate-800 tracking-tight">RM {(usage > 0 ? data.totalBill / usage : 0).toFixed(4)}<span className="text-lg text-slate-500 font-normal ml-1">/kWh</span></div>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                            <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Icons.FileText className="w-4 h-4 text-slate-500" />Cost Breakdown</h3>
+                            <span className="text-xs font-mono bg-blue-100 text-blue-700 px-2 py-1 rounded">Target: {formatCurrency(data.totalBill)}</span>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                            <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                <div><p className="font-medium text-slate-700">Energy Charge</p><p className="text-xs text-slate-500">RM {data.unitRate.toFixed(4)}/kWh &times; {usage.toFixed(2)} kWh</p></div>
+                                <p className="font-mono font-medium text-slate-900">{formatCurrency(data.usageCost)}</p>
+                            </div>
+                            <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                <div><p className="font-medium text-slate-700">Capacity Charge</p><p className="text-xs text-slate-500">RM {CAPACITY_RATE.toFixed(4)}/kWh &times; {usage.toFixed(2)} kWh</p></div>
+                                <p className="font-mono font-medium text-slate-900">{formatCurrency(data.capacityCost)}</p>
+                            </div>
+                            <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                <div><p className="font-medium text-slate-700">Network Charge</p><p className="text-xs text-slate-500">RM {NETWORK_RATE.toFixed(4)}/kWh &times; {usage.toFixed(2)} kWh</p></div>
+                                <p className="font-mono font-medium text-slate-900">{formatCurrency(data.networkCost)}</p>
+                            </div>
+                            <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                <div><p className="font-medium text-slate-700">AFA (ICPT)</p><p className="text-xs text-slate-500">RM {afaRate.toFixed(4)}/kWh &times; {usage.toFixed(2)} kWh</p></div>
+                                <p className={`font-mono font-medium ${data.afaCost < 0 ? 'text-green-600' : 'text-slate-900'}`}>{formatCurrency(data.afaCost)}</p>
+                            </div>
+                            {data.eeiCost < 0 && <div className="p-4 flex justify-between items-center bg-emerald-50/50"><div><p className="font-medium text-emerald-800">EEI Rebate</p><p className="text-xs text-emerald-600 font-medium">Energy Efficiency Incentive</p></div><p className="font-mono text-emerald-700">{formatCurrency(data.eeiCost)}</p></div>}
+                            {data.retailCharge > 0 && <div className="p-4 flex justify-between items-center bg-yellow-50/50"><div><p className="font-medium text-slate-700">Retail Charge</p><p className="text-xs text-slate-500">RM 10.00 (Flat fee &gt; 600kWh)</p></div><p className="font-mono font-medium text-slate-900">{formatCurrency(data.retailCharge)}</p></div>}
+                            <div className="p-4 flex justify-between items-center bg-slate-50/50"><div><p className="font-medium text-slate-700">KWTBB (1.6%)</p><p className="text-xs text-slate-500">1.6% (On Energy + Cap + Net)</p></div><p className="font-mono font-medium text-slate-900">{formatCurrency(data.kwtbbCost)}</p></div>
+                            <div className="p-4 flex justify-between items-center bg-slate-50/50"><div><p className="font-medium text-slate-700">Service Tax (8%)</p><p className="text-xs text-slate-500">8.0% (On taxable portion &gt; 600kWh)</p></div><p className="font-mono font-medium text-slate-900">{formatCurrency(data.sstCost)}</p></div>
+                        </div>
+                        <div className="p-4 bg-slate-100 flex justify-between items-center border-t border-slate-200"><span className="font-bold text-slate-800">Total Calculated</span><span className="font-bold text-slate-900 text-xl">{formatCurrency(data.totalBill)}</span></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SolarSizing = ({ requiredKWh, afaRate }) => {
+            const [peakHours, setPeakHours] = useState(3.4);
+            const [morningUsagePercent, setMorningUsagePercent] = useState(30);
+            const [discountPercent, setDiscountPercent] = useState(0);
+            const [fixedRebate, setFixedRebate] = useState(0); 
+            const [tngDiscount, setTngDiscount] = useState(0); 
+            const [selectedBank, setSelectedBank] = useState("MBB (Maybank)");
+            const [selectedDuration, setSelectedDuration] = useState(60);
+
+            const PANEL_NAME = "JINKO SOLAR TIGER NEO N-TYPE";
+            const PANEL_WATTAGE = 620;
+            const monthlyKWhPerPanel = (PANEL_WATTAGE * peakHours * 30) / 1000;
+
+            const solarResult = useMemo(() => {
+                if (requiredKWh <= 0) return { panels: 0, systemSize: 0, generation: 0 };
+                const panelsNeeded = Math.ceil(requiredKWh / monthlyKWhPerPanel);
+                return { panels: panelsNeeded, systemSize: (panelsNeeded * PANEL_WATTAGE) / 1000, generation: panelsNeeded * monthlyKWhPerPanel };
+            }, [requiredKWh, monthlyKWhPerPanel]);
+
+            const financeResult = useMemo(() => {
+                if (requiredKWh <= 0) return { morningOffset: 0, solarExport: 0, burnedSolar: 0, exportValue: 0, nightUsage: 0, nightBill: 0, netBill: 0, exportRate: 0 };
+                const morningOffset = requiredKWh * (morningUsagePercent / 100);
+                const rawSolarExport = Math.max(0, solarResult.generation - morningOffset);
+                const nightUsage = Math.max(0, requiredKWh - morningOffset);
+                
+                // CAPPING LOGIC: Export cannot exceed Night Import
+                const solarExport = Math.min(rawSolarExport, nightUsage);
+                const burnedSolar = Math.max(0, rawSolarExport - nightUsage);
+                
+                const exportRate = nightUsage >= 1500 ? BASE_ENERGY_RATE + HIGH_USAGE_PENALTY : BASE_ENERGY_RATE;
+                const exportValue = solarExport * exportRate;
+                const nightBillData = calculateBill(nightUsage, afaRate);
+                
+                return { morningOffset, solarExport, burnedSolar, exportValue, nightUsage, nightBill: nightBillData.totalBill, netBill: nightBillData.totalBill - exportValue, exportRate };
+            }, [requiredKWh, morningUsagePercent, solarResult.generation, afaRate]);
+
+            const originalBillAmount = calculateBill(requiredKWh, afaRate).totalBill;
+            const monthlySavings = Math.max(0, originalBillAmount - financeResult.netBill);
+
+            const totalSystemPanels = solarResult.panels;
+            const baseSystemPrice = totalSystemPanels >= 8 && totalSystemPanels <= 48 ? SYSTEM_PRICES[totalSystemPanels] : 0;
+            const maxDisc = baseSystemPrice > 50000 ? 7 : (baseSystemPrice >= 30000 ? 6 : 5);
+            const effectiveDisc = Math.min(discountPercent, maxDisc);
+            const discAmt = baseSystemPrice * (effectiveDisc / 100);
+            const priceAfterPercent = baseSystemPrice - discAmt;
+            const maxFixed = baseSystemPrice > 0 ? (priceAfterPercent < 30000 ? 600 : 1000) : 0;
+            const finalSystemCost = Math.max(0, priceAfterPercent - Math.min(fixedRebate, maxFixed) - tngDiscount);
+
+            const bankOptions = Object.keys(EPP_RATES);
+            const durationOptions = useMemo(() => EPP_RATES[selectedBank] ? Object.keys(EPP_RATES[selectedBank]).map(Number).sort((a,b)=>a-b) : [], [selectedBank]);
+            
+            useEffect(() => {
+                if (durationOptions.length > 0 && !durationOptions.includes(selectedDuration)) {
+                    setSelectedDuration(durationOptions[durationOptions.length - 1]);
+                }
+            }, [durationOptions]);
+
+            const interestRate = EPP_RATES[selectedBank]?.[selectedDuration] || 0;
+            const deposit = finalSystemCost * 0.05;
+            const loanPrincipal = finalSystemCost - deposit;
+            const totalLoanRepayment = loanPrincipal * (1 + interestRate / 100);
+            const installment = selectedDuration > 0 ? totalLoanRepayment / selectedDuration : 0;
+
+            return (
+                <div className="space-y-6">
+                    {/* Recommendation Card */}
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="bg-orange-50 border-b border-orange-100 p-4 flex items-center gap-3">
+                            <div className="bg-orange-100 p-2 rounded-lg text-orange-600"><Icons.Sun className="w-5 h-5" /></div>
+                            <div><h2 className="text-lg font-semibold text-slate-900">Solar Recommendation</h2><p className="text-xs text-slate-500">{PANEL_NAME} (620W)</p></div>
+                        </div>
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div><label className="block text-sm font-medium text-slate-700 mb-2">Sun Peak Hours</label><select value={peakHours} onChange={(e) => setPeakHours(Number(e.target.value))} className="w-full p-3 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer">{[3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0].map(v => <option key={v} value={v}>{v.toFixed(1)} h/day</option>)}</select></div>
+                            </div>
+                            {solarResult.panels > 0 ? (
+                                <div className="bg-slate-900 text-white rounded-2xl p-6 relative overflow-hidden">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
+                                        <div><span className="text-slate-400 text-xs uppercase font-bold tracking-wider">Recommended</span><div className="text-4xl font-bold text-orange-400">{solarResult.panels}<span className="text-lg text-slate-300 ml-1">pcs</span></div></div>
+                                        <div><span className="text-slate-400 text-xs uppercase font-bold tracking-wider">Total Capacity</span><div className="text-3xl font-bold">{solarResult.systemSize.toFixed(2)}<span className="text-sm text-slate-300 ml-1">kWp</span></div></div>
+                                        <div><span className="text-slate-400 text-xs uppercase font-bold tracking-wider">Base Price</span><div className="text-3xl font-bold text-blue-400">{baseSystemPrice > 0 ? formatCurrency(baseSystemPrice) : 'N/A'}</div></div>
+                                    </div>
+                                    <div className="mt-6 pt-6 border-t border-slate-800 text-center md:text-left">
+                                        <p className="text-xs font-mono text-slate-400 tracking-wide uppercase mb-1">Calculation Formula:</p>
+                                        <div className="text-sm font-mono text-blue-300 bg-slate-800/50 inline-block px-3 py-1.5 rounded-lg border border-slate-700/50">
+                                            {solarResult.panels}pcs &times; {PANEL_WATTAGE}w &times; {peakHours.toFixed(1)} hours &times; 30 days = <span className="text-blue-400 font-bold">{solarResult.generation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kWh</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : <div className="text-center py-12 text-slate-400 bg-slate-50 border border-dashed rounded-lg">Enter a bill amount to see system sizing.</div>}
+                        </div>
+                    </div>
+
+                    {requiredKWh > 0 && (
+                        <>
+                            {/* Analysis Card */}
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                <div className="bg-emerald-50 border-b border-emerald-100 p-4 flex items-center gap-3"><div className="bg-emerald-100 p-2 rounded-lg text-emerald-600"><Icons.Coins className="w-5 h-5" /></div><h2 className="text-lg font-semibold text-slate-900">Net Bill Analysis</h2></div>
+                                <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="space-y-6">
+                                        <div><label className="block text-sm font-medium text-slate-700 mb-2">Morning Usage (Self-Consumption)</label><select value={morningUsagePercent} onChange={(e) => setMorningUsagePercent(Number(e.target.value))} className="w-full p-3 border rounded-lg bg-white outline-none font-bold">{[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v => <option key={v} value={v}>{v}% of Total</option>)}</select></div>
+                                        <div><label className="block text-sm font-medium text-slate-700 mb-2">Energy Charge (Export Price)</label><div className="bg-slate-100 p-4 border rounded font-mono font-bold text-xl text-slate-700">RM {financeResult.exportRate.toFixed(4)} <span className="text-xs text-slate-400">/ kWh</span></div><p className="text-[10px] text-slate-500 mt-1 italic">(RM 0.2703 if night &lt; 1500; else RM 0.3703)</p></div>
+                                        <div className="bg-green-50 p-5 rounded-2xl border border-green-200"><p className="text-xs font-bold text-green-700 uppercase mb-1">Monthly Savings</p><p className="text-4xl font-bold text-green-800">{formatCurrency(monthlySavings)}</p></div>
+                                    </div>
+                                    <div className="bg-slate-50 p-6 rounded-2xl border flex flex-col justify-between">
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between border-b pb-3 items-center"><div><p className="font-bold text-slate-700">Night Import</p><p className="text-xs text-slate-500">{financeResult.nightUsage.toFixed(2)} kWh</p></div><p className="font-bold">{formatCurrency(financeResult.nightBill)}</p></div>
+                                            <div className="flex justify-between border-b pb-3 items-center">
+                                                <div>
+                                                    <p className="font-bold text-emerald-700">Export Income</p>
+                                                    <p className="text-xs text-slate-500">Capped at {financeResult.nightUsage.toFixed(2)} kWh</p>
+                                                    {financeResult.burnedSolar > 0 && (
+                                                        <p className="text-[10px] text-orange-600 mt-1 font-medium bg-orange-100 inline-block px-1.5 py-0.5 rounded">
+                                                            {(solarResult.generation - financeResult.morningOffset).toFixed(2)}kWh - {financeResult.nightUsage.toFixed(2)}kWh = {financeResult.burnedSolar.toFixed(2)}kWh (Unused)
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <p className="font-bold text-emerald-700">-{formatCurrency(financeResult.exportValue)}</p>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-3"><p className="text-sm font-bold text-slate-800">New Net Payment</p><p className={`text-3xl font-bold ${financeResult.netBill <= 0 ? 'text-green-600' : 'text-slate-900'}`}>{formatCurrency(financeResult.netBill)}</p></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Pricing & Quotation Card */}
+                            <div className="bg-slate-800 text-white rounded-xl shadow-lg border border-slate-700 overflow-hidden mt-8">
+                                <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+                                    <div className="flex items-center gap-3"><div className="bg-blue-600 p-2 rounded-lg text-white"><Icons.Tags className="w-5 h-5" /></div><h2 className="text-xl font-bold">System Pricing & Quotation</h2></div>
+                                    <div className="text-right font-bold text-2xl">{totalSystemPanels} Panels</div>
+                                </div>
+                                <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="space-y-6">
+                                        <div className="bg-slate-700/50 rounded-lg p-4 flex justify-between"><span>Base Price</span><span className="font-semibold">{formatCurrency(baseSystemPrice)}</span></div>
+                                        <div><label className="block text-sm font-medium text-slate-300 mb-2">Special Discount (%)</label><input type="number" step="0.1" value={discountPercent === 0 ? '' : discountPercent} onChange={(e) => setDiscountPercent(Number(e.target.value))} className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white outline-none" placeholder="0" /></div>
+                                        <div><label className="block text-sm font-medium text-slate-300 mb-2">Fixed Rebate (RM)</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">RM</span><input type="number" value={fixedRebate === 0 ? '' : fixedRebate} onChange={(e) => setFixedRebate(Number(e.target.value))} className="w-full bg-slate-900 border border-slate-600 rounded-lg pl-12 p-3 text-white outline-none" placeholder="0.00" /></div></div>
+                                        <div><label className="block text-sm font-medium text-slate-300 mb-2">TNG (Roadshow) / Campaign Discount (RM)</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">RM</span><input type="number" value={tngDiscount === 0 ? '' : tngDiscount} onChange={(e) => setTngDiscount(Number(e.target.value))} className="w-full bg-slate-900 border border-slate-600 rounded-lg pl-12 p-3 text-white outline-none" placeholder="0.00" /></div></div>
+                                    </div>
+                                    <div className="bg-slate-900 rounded-xl p-6 border border-slate-700 flex flex-col justify-between space-y-3">
+                                        <div className="flex justify-between text-slate-400"><span>Base Price</span><span>{formatCurrency(baseSystemPrice)}</span></div>
+                                        <div className="flex justify-between text-green-400"><span>Discount ({effectiveDisc}%)</span><span>-{formatCurrency(discAmt)}</span></div>
+                                        <div className="flex justify-between text-green-400"><span>Fixed Rebate</span><span>-{formatCurrency(Math.min(fixedRebate, maxFixed))}</span></div>
+                                        {tngDiscount > 0 && <div className="flex justify-between text-blue-400"><span>Campaign Discount</span><span>-{formatCurrency(tngDiscount)}</span></div>}
+                                        <div className="border-t border-slate-700 pt-4 flex justify-between items-end mt-4"><span className="font-bold text-lg">Final Cost</span><span className="font-bold text-3xl">{formatCurrency(finalSystemCost)}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* EPP Calculator Card */}
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+                                <div className="bg-indigo-50 border-b border-indigo-100 p-4 flex items-center gap-3"><div className="bg-indigo-100 p-2 rounded-lg text-indigo-600"><Icons.CreditCard className="w-5 h-5" /></div><h2 className="text-lg font-semibold text-slate-900">Installment Calculator (EPP)</h2></div>
+                                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                    <div className="space-y-6">
+                                        <div><label className="block text-sm font-medium text-slate-700 mb-2">Select Bank</label><select value={selectedBank} onChange={(e) => setSelectedBank(e.target.value)} className="w-full p-3 border rounded-lg bg-white font-medium">{bankOptions.map(b => <option key={b} value={b}>{b}</option>)}</select></div>
+                                        <div><label className="block text-sm font-medium text-slate-700 mb-2">Duration (Months)</label><select value={selectedDuration} onChange={(e) => setSelectedDuration(Number(e.target.value))} className="w-full p-3 border rounded-lg bg-white font-medium">{durationOptions.map(d => <option key={d} value={d}>{d} Months</option>)}</select>
+                                            <div className="mt-3 flex items-center gap-2 text-sm font-medium text-indigo-700 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100"><Icons.Activity className="w-4 h-4" /><span>Applicable Interest: <span className="font-bold">{interestRate.toFixed(2)}%</span></span></div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white rounded-xl p-6 shadow-lg">
+                                        <p className="text-indigo-100 text-[10px] font-bold uppercase mb-1">Monthly Installment</p>
+                                        <div className="text-4xl font-bold mb-6 tracking-tight">{formatCurrency(installment)}<span className="text-lg opacity-75 ml-1">/mth</span></div>
+                                        <div className="text-xs space-y-2 border-t border-white/20 pt-4">
+                                            <div className="flex justify-between"><span>Final System Cost</span><span className="font-bold">{formatCurrency(finalSystemCost)}</span></div>
+                                            <div className="flex justify-between text-yellow-300"><span>Upfront Deposit (5%)</span><span className="font-bold">{formatCurrency(deposit)}</span></div>
+                                            <div className="flex justify-between"><span>Loan Amount (95%)</span><span>{formatCurrency(loanPrincipal)}</span></div>
+                                            <div className="flex justify-between border-b pb-1"><span>Interest on loan Amount (RM)</span><span className="font-bold">{formatCurrency(totalLoanRepayment - loanPrincipal)}</span></div>
+                                            <div className="flex justify-between pt-1 font-bold text-white border-t border-white/10 mt-2 text-sm"><span>Total Repayment</span><span>{formatCurrency(totalLoanRepayment)}</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [billAmount, setBillAmount] = useState(0);
+            const [afaRate, setAfaRate] = useState(0.00); 
+
+            const estimatedKWh = useMemo(() => calculateKWhFromBill(billAmount, afaRate), [billAmount, afaRate]);
+            const results = useMemo(() => calculateBill(estimatedKWh, afaRate), [estimatedKWh, afaRate]);
+
+            return (
+                <div className="min-h-screen bg-slate-50 flex flex-col">
+                    <header className="bg-white border-b sticky top-0 z-10">
+                        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <img src="https://www.google.com/s2/favicons?domain=www.solarpanels.my&sz=128" alt="Logo" className="h-10 w-10 rounded-lg" />
+                                <h1 className="text-xl font-bold text-slate-900">ETERNALGY <span className="text-blue-600">Solar Calculator</span></h1>
+                            </div>
+                        </div>
+                    </header>
+                    <main className="max-w-6xl mx-auto px-4 py-8 flex-grow">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                            <div className="lg:col-span-4 space-y-6">
+                                <InputSection billAmount={billAmount} setBillAmount={setBillAmount} afa={afaRate} setAfa={setAfaRate} />
+                                <div className="bg-slate-100 rounded-lg p-5 text-xs text-slate-500 space-y-2">
+                                    <h4 className="font-semibold text-slate-800">Calculation Engine:</h4>
+                                    <p>Estimated usage based on Malaysia TNB residential rates.</p>
+                                    <ul className="list-disc pl-4">
+                                        <li>Energy Charge: 0.2703 (base) / 0.3703 (&gt;1500)</li>
+                                        <li>Cap/Net Charge: 0.0455 / 0.1285</li>
+                                        <li>KWTBB (1.6%): On Energy + Cap + Net</li>
+                                        <li>Service Tax (8%): On taxable portion (&gt;600kWh)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div className="lg:col-span-8 space-y-8">
+                                <BillSummary data={results} usage={estimatedKWh} afaRate={afaRate} />
+                                <SolarSizing requiredKWh={estimatedKWh} afaRate={afaRate} />
+                            </div>
+                        </div>
+                    </main>
+                    <footer className="max-w-6xl mx-auto px-4 py-8 text-center border-t border-slate-200">
+                        <p className="font-semibold text-slate-700 text-sm">&copy; {new Date().getFullYear()} Eternalgy Sdn Bhd 202301029164 (1523087-A)</p>
+                        <p className="text-[10px] text-slate-400 mt-2 italic leading-relaxed">
+                            This calculator is proprietary property of Eternalgy Sdn Bhd. Usage strictly limited to authorized personnel only. Unauthorized reproduction prohibited. 翻版必究。
+                        </p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

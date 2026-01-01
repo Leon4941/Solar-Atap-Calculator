@@ -1,0 +1,5 @@
+{
+  "name": "ETERNALGY Solar Calculator",
+  "description": "A comprehensive solar energy and electricity bill calculator for Malaysia, featuring reverse kWh calculation, net bill analysis, and system pricing estimation.",
+  "requestFramePermissions": []
+}
