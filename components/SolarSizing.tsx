@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Icons, SYSTEM_PRICES, EPP_RATES, BASE_ENERGY_RATE, HIGH_USAGE_PENALTY } from '../constants';
+import { Icons, SYSTEM_PRICES, EPP_RATES, BASE_ENERGY_RATE, HIGH_USAGE_PENALTY, CAPACITY_RATE, NETWORK_RATE } from '../constants';
 import { FinanceResult, SolarResult } from '../types';
 import { calculateBill, formatCurrency } from '../utils/calculations';
 
@@ -50,6 +50,12 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
     return SYSTEM_PRICES[panels] || 0;
   };
 
+  const nightBillBreakdown = useMemo(() => {
+    const morningOffset = requiredKWh * (morningUsagePercent / 100);
+    const nightUsage = Math.max(0, requiredKWh - morningOffset);
+    return calculateBill(nightUsage, afaRate);
+  }, [requiredKWh, morningUsagePercent, afaRate]);
+
   const financeResult: FinanceResult = useMemo(() => {
     if (requiredKWh <= 0) return { morningOffset: 0, solarExport: 0, burnedSolar: 0, exportValue: 0, nightUsage: 0, nightBill: 0, netBill: 0, exportRate: 0 };
     
@@ -62,7 +68,6 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
     
     const exportRate = nightUsage >= 1500 ? (BASE_ENERGY_RATE + HIGH_USAGE_PENALTY) : BASE_ENERGY_RATE;
     const exportValue = solarExport * exportRate;
-    const nightBillData = calculateBill(nightUsage, afaRate);
     
     return { 
       morningOffset, 
@@ -70,14 +75,18 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
       burnedSolar, 
       exportValue, 
       nightUsage, 
-      nightBill: nightBillData.totalBill, 
-      netBill: nightBillData.totalBill - exportValue, 
+      nightBill: nightBillBreakdown.totalBill, 
+      netBill: nightBillBreakdown.totalBill - exportValue, 
       exportRate 
     };
-  }, [requiredKWh, morningUsagePercent, solarResult.generation, afaRate]);
+  }, [requiredKWh, morningUsagePercent, solarResult.generation, afaRate, nightBillBreakdown]);
 
   const originalBillAmount = calculateBill(requiredKWh, afaRate).totalBill;
   const monthlySavings = Math.max(0, originalBillAmount - financeResult.netBill);
+
+  // Updated calculation for display per user request: (Energy + Capacity + Network)
+  const baseRate = nightBillBreakdown.unitRate + CAPACITY_RATE + NETWORK_RATE;
+  const morningSavingsRM = financeResult.morningOffset * baseRate;
 
   const totalSystemPanels = solarResult.panels;
   const baseSystemPrice = getSystemPrice(totalSystemPanels);
@@ -165,7 +174,7 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                 <div>
                   <span className="text-slate-400 text-xs uppercase tracking-wider font-semibold">Base Price</span>
                   <div className="flex items-baseline justify-center md:justify-start gap-2">
-                    <span className="text-3xl font-bold text-blue-400">{getSystemPrice(solarResult.panels) > 0 ? formatCurrency(getSystemPrice(solarResult.panels)) : 'N/A'}</span>
+                    <span className="text-3xl font-bold text-blue-400">{getSystemPrice(solarResult.panels) > 0 ? formatCurrency(getSystemPrice(solarResult.panels)) : 'Contact Support'}</span>
                   </div>
                 </div>
               </div>
@@ -202,10 +211,20 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                   <select 
                     value={morningUsagePercent} 
                     onChange={(e) => setMorningUsagePercent(Number(e.target.value))} 
-                    className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white font-bold"
+                    className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white font-bold mb-2"
                   >
                     {percentOptions.map((val) => <option key={val} value={val}>{val}% of Total Usage</option>)}
                   </select>
+                  <div className="bg-blue-50 px-4 py-3 rounded-lg border border-blue-100">
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Self-Consumption Savings</p>
+                    <div className="text-xs font-medium text-blue-700 mb-1">
+                      {requiredKWh.toFixed(2)} kWh &times; {morningUsagePercent}% = <span className="font-bold">{financeResult.morningOffset.toFixed(2)}kWh</span>
+                    </div>
+                    <p className="text-sm font-bold text-blue-800">Your Saving = {formatCurrency(morningSavingsRM)}</p>
+                    <p className="text-[9px] text-blue-500 font-medium">
+                      {financeResult.morningOffset.toFixed(2)}kWh &times; RM {baseRate.toFixed(4)} (Ene+Cap+Net)
+                    </p>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Energy Charge (Export Price)</label>
@@ -235,7 +254,7 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                       <p className="text-xs text-slate-500">Capped at {financeResult.nightUsage.toFixed(2)} kWh</p>
                       {financeResult.burnedSolar > 0 && (
                         <p className="text-[10px] text-orange-600 mt-1 font-medium bg-orange-100 inline-block px-1.5 py-0.5 rounded">
-                          {(solarResult.generation - financeResult.morningOffset).toFixed(2)}kWh - {financeResult.nightUsage.toFixed(2)}kWh = {financeResult.burnedSolar.toFixed(2)}kWh (Unused)
+                          {(solarResult.generation - financeResult.morningOffset).toFixed(2)}kWh - {financeResult.nightUsage.toFixed(2)}kWh = {financeResult.burnedSolar.toFixed(2)}kWh (Back up)
                         </p>
                       )}
                     </div>
@@ -249,6 +268,78 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Cost Breakdown after install solar */}
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                <Icons.FileText className="w-4 h-4 text-slate-500" />
+                Cost Breakdown after install solar
+              </h3>
+              <span className="text-[10px] font-mono bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                Import: {financeResult.nightUsage.toFixed(2)} kWh
+              </span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                <div>
+                  <p className="font-medium text-slate-700">Energy Charge</p>
+                  <p className="text-xs text-slate-500">RM {nightBillBreakdown.unitRate.toFixed(4)}/kWh &times; {financeResult.nightUsage.toFixed(2)} kWh</p>
+                </div>
+                <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.usageCost)}</p>
+              </div>
+              <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                <div>
+                  <p className="font-medium text-slate-700">Capacity Charge</p>
+                  <p className="text-xs text-slate-500">RM {CAPACITY_RATE.toFixed(4)}/kWh &times; {financeResult.nightUsage.toFixed(2)} kWh</p>
+                </div>
+                <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.capacityCost)}</p>
+              </div>
+              <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                <div>
+                  <p className="font-medium text-slate-700">Network Charge</p>
+                  <p className="text-xs text-slate-500">RM {NETWORK_RATE.toFixed(4)}/kWh &times; {financeResult.nightUsage.toFixed(2)} kWh</p>
+                </div>
+                <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.networkCost)}</p>
+              </div>
+              <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                <div>
+                  <p className="font-medium text-slate-700">AFA (ICPT)</p>
+                  <p className="text-xs text-slate-500">RM {afaRate.toFixed(4)}/kWh &times; {financeResult.nightUsage.toFixed(2)} kWh</p>
+                </div>
+                <p className={`font-mono font-medium ${nightBillBreakdown.afaCost < 0 ? 'text-green-600' : 'text-slate-900'}`}>
+                  {formatCurrency(nightBillBreakdown.afaCost)}
+                </p>
+              </div>
+              {nightBillBreakdown.retailCharge > 0 && (
+                <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-yellow-50/50">
+                  <div>
+                    <p className="font-medium text-slate-700">Retail Charge</p>
+                    <p className="text-xs text-slate-500">RM 10.00 (Flat fee &gt; 600kWh)</p>
+                  </div>
+                  <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.retailCharge)}</p>
+                </div>
+              )}
+              <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-slate-50/50">
+                <div>
+                  <p className="font-medium text-slate-700">KWTBB (1.6%)</p>
+                  <p className="text-xs text-slate-500">1.6% (On Energy + Cap + Net)</p>
+                </div>
+                <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.kwtbbCost)}</p>
+              </div>
+              <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-slate-50/50">
+                <div>
+                  <p className="font-medium text-slate-700">Service Tax (8%)</p>
+                  <p className="text-xs text-slate-500">8.0% (On taxable portion &gt; 600kWh)</p>
+                </div>
+                <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.sstCost)}</p>
+              </div>
+            </div>
+            <div className="p-4 bg-slate-100 flex justify-between items-center border-t border-slate-200">
+              <span className="font-bold text-slate-800">Total Night Import Cost</span>
+              <span className="font-bold text-slate-900 text-lg">{formatCurrency(nightBillBreakdown.totalBill)}</span>
             </div>
           </div>
 

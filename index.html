@@ -168,42 +168,57 @@
          * 3. COMPONENTS
          *******************************************************/
 
-        const InputSection = ({ billAmount, setBillAmount, afa, setAfa }) => (
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <Icons.Banknote className="w-5 h-5 text-green-600" />
-                    Energy Parameters
-                </h2>
-                <div className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Monthly TNB Bill Amount (RM)</label>
-                        <div className="relative">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-serif">RM</div>
-                            <input 
-                                type="number" step="0.01" 
-                                value={billAmount === 0 ? '' : billAmount} 
-                                onChange={(e) => setBillAmount(Math.max(0, Number(e.target.value)))} 
-                                className="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-lg font-medium" 
-                                placeholder="e.g. 250.00" 
-                            />
+        const InputSection = ({ billAmount, setBillAmount, afa, setAfa }) => {
+            const commonRates = [
+                { label: 'Rebate (≤ 600kWh)', value: -0.0200 },
+                { label: 'No Surcharge (601-1500kWh)', value: 0.0000 },
+                { label: 'Surcharge (> 1500kWh)', value: 0.1000 },
+            ];
+
+            return (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <Icons.Banknote className="w-5 h-5 text-green-600" />
+                        Energy Parameters
+                    </h2>
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Monthly TNB Bill Amount (RM)</label>
+                            <div className="relative">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-serif">RM</div>
+                                <input 
+                                    type="number" step="0.01" 
+                                    value={billAmount === 0 ? '' : billAmount} 
+                                    onChange={(e) => setBillAmount(Math.max(0, Number(e.target.value)))} 
+                                    className="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-lg font-medium" 
+                                    placeholder="e.g. 250.00" 
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">AFA / ICPT Rate (RM/kWh)</label>
-                        <div className="relative">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Activity className="w-4 h-4" /></div>
-                            <input 
-                                type="number" step="0.0001" 
-                                value={afa} 
-                                onChange={(e) => setAfa(Number(e.target.value))} 
-                                className="w-full pl-10 pr-12 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-lg font-medium" 
-                            />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">RM</span>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">AFA / ICPT Rate (RM/kWh)</label>
+                            <div className="relative mb-3">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Activity className="w-4 h-4" /></div>
+                                <input 
+                                    type="number" step="0.0001" 
+                                    value={afa} 
+                                    onChange={(e) => setAfa(Number(e.target.value))} 
+                                    className="w-full pl-10 pr-12 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-lg font-medium" 
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">RM</span>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2">
+                                <div className="flex flex-wrap gap-2">
+                                    {commonRates.map((rate) => (
+                                        <button key={rate.value} onClick={() => setAfa(rate.value)} className={`text-[10px] px-2 py-1.5 rounded-md border transition-all font-semibold ${afa === rate.value ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-slate-200 text-slate-600'}`}>{rate.label}</button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        );
+            );
+        };
 
         const BillSummary = ({ data, usage, afaRate }) => (
             <div className="space-y-6">
@@ -282,6 +297,12 @@
                 return { panels: panelsNeeded, systemSize: (panelsNeeded * PANEL_WATTAGE) / 1000, generation: panelsNeeded * monthlyKWhPerPanel };
             }, [requiredKWh, monthlyKWhPerPanel]);
 
+            const nightBillBreakdown = useMemo(() => {
+                const morningOffset = requiredKWh * (morningUsagePercent / 100);
+                const nightUsage = Math.max(0, requiredKWh - morningOffset);
+                return calculateBill(nightUsage, afaRate);
+            }, [requiredKWh, morningUsagePercent, afaRate]);
+
             const financeResult = useMemo(() => {
                 if (requiredKWh <= 0) return { morningOffset: 0, solarExport: 0, burnedSolar: 0, exportValue: 0, nightUsage: 0, nightBill: 0, netBill: 0, exportRate: 0 };
                 const morningOffset = requiredKWh * (morningUsagePercent / 100);
@@ -293,13 +314,16 @@
                 
                 const exportRate = nightUsage >= 1500 ? BASE_ENERGY_RATE + HIGH_USAGE_PENALTY : BASE_ENERGY_RATE;
                 const exportValue = solarExport * exportRate;
-                const nightBillData = calculateBill(nightUsage, afaRate);
                 
-                return { morningOffset, solarExport, burnedSolar, exportValue, nightUsage, nightBill: nightBillData.totalBill, netBill: nightBillData.totalBill - exportValue, exportRate };
-            }, [requiredKWh, morningUsagePercent, solarResult.generation, afaRate]);
+                return { morningOffset, solarExport, burnedSolar, exportValue, nightUsage, nightBill: nightBillBreakdown.totalBill, netBill: nightBillBreakdown.totalBill - exportValue, exportRate };
+            }, [requiredKWh, morningUsagePercent, solarResult.generation, afaRate, nightBillBreakdown]);
 
             const originalBillAmount = calculateBill(requiredKWh, afaRate).totalBill;
             const monthlySavings = Math.max(0, originalBillAmount - financeResult.netBill);
+            
+            // Per request: Energy + Capacity + Network for savings formula
+            const baseRate = nightBillBreakdown.unitRate + CAPACITY_RATE + NETWORK_RATE;
+            const morningSavingsRM = financeResult.morningOffset * baseRate;
 
             const baseSystemPrice = SYSTEM_PRICES[solarResult.panels] || 0;
             const effectiveDisc = Math.min(discountPercent, (baseSystemPrice > 50000 ? 7 : (baseSystemPrice >= 30000 ? 6 : 5)));
@@ -346,7 +370,18 @@
                                 <div className="bg-emerald-50 border-b border-emerald-100 p-4 flex items-center gap-3"><div className="bg-emerald-100 p-2 rounded-lg text-emerald-600"><Icons.Coins className="w-5 h-5" /></div><h2 className="text-lg font-semibold text-slate-900">Net Bill Analysis</h2></div>
                                 <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     <div className="space-y-6">
-                                        <div><label className="block text-sm font-medium text-slate-700 mb-2">Morning Usage %</label><select value={morningUsagePercent} onChange={(e) => setMorningUsagePercent(Number(e.target.value))} className="w-full p-3 border rounded-lg bg-white outline-none font-bold">{[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v => <option key={v} value={v}>{v}%</option>)}</select></div>
+                                        <div><label className="block text-sm font-medium text-slate-700 mb-2">Morning Usage %</label><select value={morningUsagePercent} onChange={(e) => setMorningUsagePercent(Number(e.target.value))} className="w-full p-3 border rounded-lg bg-white outline-none font-bold mb-2">{[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(v => <option key={v} value={v}>{v}%</option>)}</select>
+                                            <div className="bg-blue-50 px-4 py-3 rounded-lg border border-blue-100">
+                                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Self-Consumption Savings</p>
+                                                <div className="text-xs font-medium text-blue-700 mb-1">
+                                                    {requiredKWh.toFixed(2)} kWh &times; {morningUsagePercent}% = <span className="font-bold">{financeResult.morningOffset.toFixed(2)}kWh</span>
+                                                </div>
+                                                <p className="text-sm font-bold text-blue-800">Your Saving = {formatCurrency(morningSavingsRM)}</p>
+                                                <p className="text-[9px] text-blue-500 font-medium">
+                                                    {financeResult.morningOffset.toFixed(2)}kWh &times; RM {baseRate.toFixed(4)} (Ene+Cap+Net)
+                                                </p>
+                                            </div>
+                                        </div>
                                         <div><label className="block text-sm font-medium text-slate-700 mb-2">Export Price</label><div className="bg-slate-100 p-4 border rounded font-mono font-bold text-xl text-slate-700">RM {financeResult.exportRate.toFixed(4)}</div></div>
                                         <div className="bg-green-50 p-5 rounded-2xl border border-green-200"><p className="text-xs font-bold text-green-700 uppercase">Monthly Savings</p><p className="text-4xl font-bold text-green-800">{formatCurrency(monthlySavings)}</p></div>
                                     </div>
@@ -358,7 +393,7 @@
                                                 <p className="text-xs text-slate-500">Capped at {financeResult.nightUsage.toFixed(2)} kWh</p>
                                                 {financeResult.burnedSolar > 0 && (
                                                     <p className="text-[10px] text-orange-600 mt-1 font-medium bg-orange-100 inline-block px-1.5 py-0.5 rounded">
-                                                        {(solarResult.generation - financeResult.morningOffset).toFixed(2)}kWh - {financeResult.nightUsage.toFixed(2)}kWh = {financeResult.burnedSolar.toFixed(2)}kWh (Unused)
+                                                        {(solarResult.generation - financeResult.morningOffset).toFixed(2)}kWh - {financeResult.nightUsage.toFixed(2)}kWh = {financeResult.burnedSolar.toFixed(2)}kWh (Back up)
                                                     </p>
                                                 )}
                                             </div>
@@ -366,6 +401,54 @@
                                         </div>
                                         <div className="flex justify-between items-center pt-3 font-bold text-slate-900"><p>New Net Payment</p><p className="text-3xl">{formatCurrency(financeResult.netBill)}</p></div>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+                                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                    <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                                        <Icons.FileText className="w-4 h-4 text-slate-500" />
+                                        Cost Breakdown after install solar
+                                    </h3>
+                                    <span className="text-[10px] font-mono bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                        Import: {financeResult.nightUsage.toFixed(2)} kWh
+                                    </span>
+                                </div>
+                                <div className="divide-y divide-slate-100">
+                                    <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                        <div><p className="font-medium text-slate-700">Energy Charge</p><p className="text-xs text-slate-500">RM {nightBillBreakdown.unitRate.toFixed(4)}/kWh &times; {financeResult.nightUsage.toFixed(2)} kWh</p></div>
+                                        <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.usageCost)}</p>
+                                    </div>
+                                    <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                        <div><p className="font-medium text-slate-700">Capacity Charge</p><p className="text-xs text-slate-500">RM {CAPACITY_RATE.toFixed(4)}/kWh &times; {financeResult.nightUsage.toFixed(2)} kWh</p></div>
+                                        <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.capacityCost)}</p>
+                                    </div>
+                                    <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                        <div><p className="font-medium text-slate-700">Network Charge</p><p className="text-xs text-slate-500">RM {NETWORK_RATE.toFixed(4)}/kWh &times; {financeResult.nightUsage.toFixed(2)} kWh</p></div>
+                                        <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.networkCost)}</p>
+                                    </div>
+                                    <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
+                                        <div><p className="font-medium text-slate-700">AFA (ICPT)</p><p className="text-xs text-slate-500">RM {afaRate.toFixed(4)}/kWh &times; {financeResult.nightUsage.toFixed(2)} kWh</p></div>
+                                        <p className={`font-mono font-medium ${nightBillBreakdown.afaCost < 0 ? 'text-green-600' : 'text-slate-900'}`}>{formatCurrency(nightBillBreakdown.afaCost)}</p>
+                                    </div>
+                                    {nightBillBreakdown.retailCharge > 0 && (
+                                        <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-yellow-50/50">
+                                            <div><p className="font-medium text-slate-700">Retail Charge</p><p className="text-xs text-slate-500">RM 10.00 (Flat fee > 600kWh)</p></div>
+                                            <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.retailCharge)}</p>
+                                        </div>
+                                    )}
+                                    <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-slate-50/50">
+                                        <div><p className="font-medium text-slate-700">KWTBB (1.6%)</p><p className="text-xs text-slate-500">1.6% (On Energy + Cap + Net)</p></div>
+                                        <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.kwtbbCost)}</p>
+                                    </div>
+                                    <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-slate-50/50">
+                                        <div><p className="font-medium text-slate-700">Service Tax (8%)</p><p className="text-xs text-slate-500">8.0% (On taxable portion > 600kWh)</p></div>
+                                        <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.sstCost)}</p>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-slate-100 flex justify-between items-center border-t border-slate-200">
+                                    <span className="font-bold text-slate-800">Total Night Import Cost</span>
+                                    <span className="font-bold text-slate-900 text-lg">{formatCurrency(nightBillBreakdown.totalBill)}</span>
                                 </div>
                             </div>
 
@@ -390,10 +473,7 @@
                             </div>
 
                             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
-                                <div className="bg-indigo-50 border-b border-indigo-100 p-4 flex items-center gap-3">
-                                    <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600"><Icons.CreditCard className="w-5 h-5" /></div>
-                                    <h2 className="text-lg font-semibold text-slate-900">Installment Calculator (EPP)</h2>
-                                </div>
+                                <div className="bg-indigo-50 border-b border-indigo-100 p-4 flex items-center gap-3"><div className="bg-indigo-100 p-2 rounded-lg text-indigo-600"><Icons.CreditCard className="w-5 h-5" /></div><h2 className="text-lg font-semibold text-slate-900">Installment Calculator (EPP)</h2></div>
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                                     <div className="space-y-6">
                                         <div><label className="block text-sm font-medium text-slate-700 mb-2">Select Bank</label><select value={selectedBank} onChange={(e) => setSelectedBank(e.target.value)} className="w-full p-3 border rounded-lg bg-white font-medium">{Object.keys(EPP_RATES).map(b => <option key={b} value={b}>{b}</option>)}</select></div>
@@ -405,26 +485,11 @@
                                         <p className="text-indigo-100 text-[10px] font-bold uppercase mb-1">Monthly Installment</p>
                                         <div className="text-4xl font-bold mb-6 tracking-tight">{formatCurrency(installment)}<span className="text-lg font-normal opacity-75">/mth</span></div>
                                         <div className="text-xs text-indigo-100 space-y-2 border-t border-white/20 pt-4">
-                                            <div className="flex justify-between items-center pb-1">
-                                                <span>Final System Cost</span>
-                                                <span className="font-bold text-white">{formatCurrency(finalSystemCost)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center pb-1">
-                                                <span>Upfront Deposit (5%)</span>
-                                                <span className="font-bold">{formatCurrency(depositAmount)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center pb-1">
-                                                <span>Loan Amount (95%)</span>
-                                                <span>{formatCurrency(loanPrincipal)}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center pb-1">
-                                                <span>Interest on Loan Amount</span>
-                                                <span className="font-bold">{formatCurrency(totalLoanWithInterest - loanPrincipal)}</span>
-                                            </div>
-                                            <div className="flex justify-between pt-1 font-bold text-white border-t border-white/10 mt-2 text-sm">
-                                                <span>Total Loan Repayment</span>
-                                                <span>{formatCurrency(totalLoanWithInterest)}</span>
-                                            </div>
+                                            <div className="flex justify-between items-center pb-1"><span>Final System Cost</span><span className="font-bold text-white">{formatCurrency(finalSystemCost)}</span></div>
+                                            <div className="flex justify-between items-center pb-1"><span>Upfront Deposit (5%)</span><span className="font-bold">{formatCurrency(depositAmount)}</span></div>
+                                            <div className="flex justify-between items-center pb-1"><span>Loan Amount (95%)</span><span>{formatCurrency(loanPrincipal)}</span></div>
+                                            <div className="flex justify-between items-center pb-1"><span>Interest on Loan Amount</span><span className="font-bold">{formatCurrency(totalLoanWithInterest - loanPrincipal)}</span></div>
+                                            <div className="flex justify-between pt-1 font-bold text-white border-t border-white/10 mt-2 text-sm"><span>Total Loan Repayment</span><span>{formatCurrency(totalLoanWithInterest)}</span></div>
                                         </div>
                                     </div>
                                 </div>
@@ -455,16 +520,6 @@
                     <main className="max-w-6xl mx-auto px-4 py-8 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8">
                         <div className="lg:col-span-4 space-y-6">
                             <InputSection billAmount={billAmount} setBillAmount={setBillAmount} afa={afaRate} setAfa={setAfaRate} />
-                            <div className="bg-slate-100 rounded-lg p-5 text-xs text-slate-500 space-y-2">
-                                <h4 className="font-semibold text-slate-800">Calculation Engine:</h4>
-                                <p>Estimated usage based on Malaysia TNB residential rates.</p>
-                                <ul className="list-disc pl-4 opacity-75">
-                                    <li>0.2703 (base) / 0.3703 (&gt;1500)</li>
-                                    <li>Cap/Net: 0.0455 / 0.1285</li>
-                                    <li>KWTBB (1.6%)</li>
-                                    <li>SST (8%): portion &gt; 600kWh</li>
-                                </ul>
-                            </div>
                         </div>
                         <div className="lg:col-span-8 space-y-8">
                             <BillSummary data={results} usage={estimatedKWh} afaRate={afaRate} />
