@@ -232,7 +232,7 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                     RM {financeResult.exportRate.toFixed(4)} <span className="text-xs text-slate-400 font-normal">/ kWh</span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-2 italic leading-relaxed">
-                    (RM 0.2703 if night usage &lt; 1500kWh; RM 0.3703 if &gt;= 1500kWh)
+                    (RM 0.2703 if night usage &lt; 1500kWh; RM 0.2703 if &gt;= 1500kWh)
                     <br />Night Usage = {financeResult.nightUsage.toFixed(2)} kWh
                   </p>
                 </div>
@@ -385,7 +385,7 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">TNG (Roadshow) / Campaign Discount (RM)</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">TNG / Campaign Discount (RM)</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">RM</span>
                     <input 
@@ -402,7 +402,7 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                   <div className="flex justify-between text-slate-400"><span>Base Price</span><span>{formatCurrency(baseSystemPrice)}</span></div>
                   <div className="flex justify-between text-green-400"><span>Special Discount ({effectiveDiscountPercent}%)</span><span>-{formatCurrency(discountAmount)}</span></div>
                   <div className="flex justify-between text-green-400"><span>Fixed Rebate</span><span>-{formatCurrency(effectiveFixedRebate)}</span></div>
-                  {tngDiscount > 0 && <div className="flex justify-between text-blue-400"><span>Campaign Discount</span><span>-{formatCurrency(tngDiscount)}</span></div>}
+                  {tngDiscount > 0 && <div className="flex justify-between text-blue-400"><span>TNG / Campaign Discount</span><span>-{formatCurrency(tngDiscount)}</span></div>}
                   <div className="border-t border-slate-700 pt-4 flex justify-between items-end mt-4">
                     <span className="font-bold text-lg text-white">Final System Cost</span>
                     <span className="font-bold text-3xl text-white">{formatCurrency(finalSystemCost)}</span>
