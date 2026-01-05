@@ -81,15 +81,6 @@ const BillSummary: React.FC<BillSummaryProps> = ({ data, usage, afaRate }) => {
               {formatCurrency(data.afaCost)}
             </p>
           </div>
-          {data.eeiCost < 0 && (
-            <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-emerald-50/50">
-              <div>
-                <p className="font-medium text-emerald-800">EEI Rebate</p>
-                <p className="text-xs text-emerald-600">Energy Efficiency Incentive</p>
-              </div>
-              <p className="font-mono font-medium text-emerald-700">{formatCurrency(data.eeiCost)}</p>
-            </div>
-          )}
           {data.retailCharge > 0 && (
             <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-yellow-50/50">
               <div>
@@ -113,6 +104,15 @@ const BillSummary: React.FC<BillSummaryProps> = ({ data, usage, afaRate }) => {
             </div>
             <p className="font-mono font-medium text-slate-900">{formatCurrency(data.sstCost)}</p>
           </div>
+          {data.eeiCost < 0 && (
+            <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-emerald-50/50">
+              <div>
+                <p className="font-medium text-emerald-800">EEI Rebate</p>
+                <p className="text-xs text-emerald-600">Energy Efficiency Incentive</p>
+              </div>
+              <p className="font-mono font-medium text-emerald-700">{formatCurrency(data.eeiCost)}</p>
+            </div>
+          )}
         </div>
         <div className="p-4 bg-slate-100 flex justify-between items-center border-t border-slate-200">
           <span className="font-bold text-slate-800">Total Calculated</span>

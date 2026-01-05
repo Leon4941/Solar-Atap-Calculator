@@ -57,7 +57,6 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
     const rawSolarExport = Math.max(0, solarResult.generation - morningOffset);
     const nightUsage = Math.max(0, requiredKWh - morningOffset);
     
-    // CAPPING LOGIC: Export cannot exceed Night Import
     const solarExport = Math.min(rawSolarExport, nightUsage);
     const burnedSolar = Math.max(0, rawSolarExport - nightUsage);
     
@@ -332,13 +331,13 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Select Bank</label>
-                  <select value={selectedBank} onChange={(e) => setSelectedBank(e.target.value)} className="w-full p-3 border rounded-lg outline-none bg-white font-medium">
+                  <select value={selectedBank} onChange={(e) => setSelectedBank(e.target.value)} className="w-full p-3 border rounded-lg outline-none bg-white font-medium text-slate-900">
                     {Object.keys(EPP_RATES).map(bank => <option key={bank} value={bank}>{bank}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Duration (Months)</label>
-                  <select value={selectedDuration} onChange={(e) => setSelectedDuration(Number(e.target.value))} className="w-full p-3 border rounded-lg outline-none bg-white font-medium">
+                  <select value={selectedDuration} onChange={(e) => setSelectedDuration(Number(e.target.value))} className="w-full p-3 border rounded-lg outline-none bg-white font-medium text-slate-900">
                     {availableDurations.map(duration => <option key={duration} value={duration}>{duration} Months</option>)}
                   </select>
                   <div className="mt-3 flex items-center gap-2 text-sm font-medium text-indigo-700 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100">
@@ -352,7 +351,7 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                 <div className="text-4xl font-bold mb-6 tracking-tight">{formatCurrency(monthlyInstallment)}<span className="text-lg font-normal opacity-75">/mth</span></div>
                 <div className="text-xs text-indigo-100 space-y-2 border-t border-white/20 pt-4">
                   <div className="flex justify-between items-center pb-1">
-                    <span>Total System Cost</span>
+                    <span>Final System Cost</span>
                     <span className="font-bold text-white">{formatCurrency(finalSystemCost)}</span>
                   </div>
                   <div className="flex justify-between items-center pb-1">
@@ -364,7 +363,7 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                     <span>{formatCurrency(loanPrincipal)}</span>
                   </div>
                   <div className="flex justify-between items-center pb-1">
-                    <span>Interest on loan Amount (RM)</span>
+                    <span>Interest on Loan Amount</span>
                     <span className="font-bold">{formatCurrency(totalLoanWithInterest - loanPrincipal)}</span>
                   </div>
                   <div className="flex justify-between pt-1 font-bold text-white border-t border-white/10 mt-2 text-sm">
