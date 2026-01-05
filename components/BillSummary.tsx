@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons, CAPACITY_RATE, NETWORK_RATE } from '../constants';
 import { BillData } from '../types';
-import { formatCurrency } from '../utils/calculations';
+import { formatCurrency, getEEIRate } from '../utils/calculations';
 
 interface BillSummaryProps {
   data: BillData;
@@ -11,6 +11,8 @@ interface BillSummaryProps {
 
 const BillSummary: React.FC<BillSummaryProps> = ({ data, usage, afaRate }) => {
   const avgCostPerKwh = usage > 0 ? data.totalBill / usage : 0;
+  const eeiRate = getEEIRate(usage);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -108,7 +110,9 @@ const BillSummary: React.FC<BillSummaryProps> = ({ data, usage, afaRate }) => {
             <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-emerald-50/50">
               <div>
                 <p className="font-medium text-emerald-800">EEI Rebate</p>
-                <p className="text-xs text-emerald-600">Energy Efficiency Incentive</p>
+                <p className="text-[10px] text-emerald-600 mt-1">
+                  ({usage.toFixed(2)}kWh &times; -RM {eeiRate.toFixed(3)})
+                </p>
               </div>
               <p className="font-mono font-medium text-emerald-700">{formatCurrency(data.eeiCost)}</p>
             </div>

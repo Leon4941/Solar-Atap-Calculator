@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Icons, SYSTEM_PRICES, EPP_RATES, BASE_ENERGY_RATE, HIGH_USAGE_PENALTY, CAPACITY_RATE, NETWORK_RATE } from '../constants';
 import { FinanceResult, SolarResult } from '../types';
-import { calculateBill, formatCurrency } from '../utils/calculations';
+import { calculateBill, formatCurrency, getEEIRate } from '../utils/calculations';
 
 interface SolarSizingProps {
   requiredKWh: number;
@@ -119,6 +119,8 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
   const loanPrincipal = finalSystemCost - depositAmount;
   const totalLoanWithInterest = loanPrincipal * (1 + interestRatePercent / 100);
   const monthlyInstallment = selectedDuration > 0 ? totalLoanWithInterest / selectedDuration : 0;
+
+  const eeiRateAfterSolar = getEEIRate(financeResult.nightUsage);
 
   return (
     <div className="space-y-6">
@@ -336,6 +338,17 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                 </div>
                 <p className="font-mono font-medium text-slate-900">{formatCurrency(nightBillBreakdown.sstCost)}</p>
               </div>
+              {nightBillBreakdown.eeiCost < 0 && (
+                <div className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors bg-emerald-50/50">
+                  <div>
+                    <p className="font-medium text-emerald-800">EEI Rebate</p>
+                    <p className="text-[10px] text-emerald-600 mt-1">
+                      ({financeResult.nightUsage.toFixed(2)}kWh &times; -RM {eeiRateAfterSolar.toFixed(3)})
+                    </p>
+                  </div>
+                  <p className="font-mono font-medium text-emerald-700">{formatCurrency(nightBillBreakdown.eeiCost)}</p>
+                </div>
+              )}
             </div>
             <div className="p-4 bg-slate-100 flex justify-between items-center border-t border-slate-200">
               <span className="font-bold text-slate-800">Total Night Import Cost</span>
