@@ -64,6 +64,7 @@
             TrendingDown: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>,
             CheckCircle2: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
             Plus: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+            Minus: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M5 12h14"/></svg>,
             Calculator: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>,
             Tags: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m15 5 6.3 6.3a2.4 2.4 0 0 1 0 3.4L17 19"/><path d="M9.586 5.586A2 2 0 0 0 8.172 5H3a1 1 0 0 0-1 1v5.172a2 2 0 0 0 .586 1.414L8.29 18.29a2.426 2.426 0 0 0 3.42 0l3.58-3.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="6.5" cy="9.5" r=".5"/><circle cx="14" cy="6.5" r=".5"/></svg>,
             CreditCard: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
@@ -279,11 +280,16 @@
         const SolarSizing = ({ requiredKWh, afaRate }) => {
             const [peakHours, setPeakHours] = useState(3.4);
             const [morningUsagePercent, setMorningUsagePercent] = useState(30);
+            const [panelAdjustment, setPanelAdjustment] = useState(0);
             const [discountPercent, setDiscountPercent] = useState(0);
             const [fixedRebate, setFixedRebate] = useState(0); 
             const [tngDiscount, setTngDiscount] = useState(0); 
             const [selectedBank, setSelectedBank] = useState("MBB (Maybank)");
             const [selectedDuration, setSelectedDuration] = useState(60);
+
+            useEffect(() => {
+                setPanelAdjustment(0);
+            }, [requiredKWh]);
 
             const PANEL_NAME = "JINKO SOLAR TIGER NEO N-TYPE";
             const PANEL_WATTAGE = 620;
@@ -291,9 +297,10 @@
 
             const solarResult = useMemo(() => {
                 if (requiredKWh <= 0) return { panels: 0, systemSize: 0, generation: 0 };
-                const panelsNeeded = Math.ceil(requiredKWh / monthlyKWhPerPanel);
+                const basePanels = Math.ceil(requiredKWh / monthlyKWhPerPanel);
+                const panelsNeeded = Math.max(8, Math.min(48, basePanels + panelAdjustment));
                 return { panels: panelsNeeded, systemSize: (panelsNeeded * PANEL_WATTAGE) / 1000, generation: panelsNeeded * monthlyKWhPerPanel };
-            }, [requiredKWh, monthlyKWhPerPanel]);
+            }, [requiredKWh, monthlyKWhPerPanel, panelAdjustment]);
 
             const nightBillBreakdown = useMemo(() => {
                 const morningOffset = requiredKWh * (morningUsagePercent / 100);
@@ -319,22 +326,18 @@
             const originalBillAmount = calculateBill(requiredKWh, afaRate).totalBill;
             const monthlySavings = Math.max(0, originalBillAmount - financeResult.netBill);
             
-            // Per request: Energy + Capacity + Network for savings formula
             const baseRate = nightBillBreakdown.unitRate + CAPACITY_RATE + NETWORK_RATE;
             const morningSavingsRM = financeResult.morningOffset * baseRate;
 
             const baseSystemPrice = SYSTEM_PRICES[solarResult.panels] || 0;
             const effectiveDisc = Math.min(discountPercent, (baseSystemPrice > 50000 ? 7 : (baseSystemPrice >= 30000 ? 6 : 5)));
             const discAmt = baseSystemPrice * (effectiveDisc / 100);
-            
             const maxFixedRebate = baseSystemPrice > 0 ? (baseSystemPrice - discAmt < 30000 ? 600 : 1000) : 0;
             const effectiveFixedRebate = Math.min(fixedRebate, maxFixedRebate);
-            
             const finalSystemCost = Math.max(0, baseSystemPrice - discAmt - effectiveFixedRebate - tngDiscount);
 
             const durationOptions = EPP_RATES[selectedBank] ? Object.keys(EPP_RATES[selectedBank]).map(Number).sort((a,b)=>a-b) : [];
             const interestRate = EPP_RATES[selectedBank]?.[selectedDuration] || 0;
-            
             const depositAmount = finalSystemCost * 0.05;
             const loanPrincipal = finalSystemCost - depositAmount;
             const totalLoanWithInterest = loanPrincipal * (1 + interestRate / 100);
@@ -356,7 +359,26 @@
                             {solarResult.panels > 0 && (
                                 <div className="bg-slate-900 text-white rounded-2xl p-6 relative overflow-hidden">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
-                                        <div><span className="text-slate-400 text-xs uppercase font-bold tracking-wider">Recommended</span><div className="text-4xl font-bold text-orange-400">{solarResult.panels}<span className="text-lg text-slate-300 ml-1">pcs</span></div></div>
+                                        <div>
+                                            <span className="text-slate-400 text-xs uppercase font-bold tracking-wider">Recommended</span>
+                                            <div className="flex items-center justify-center md:justify-start gap-3 mt-1">
+                                                <button
+                                                  onClick={() => setPanelAdjustment(prev => prev - 1)}
+                                                  disabled={solarResult.panels <= 8}
+                                                  className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-orange-400 disabled:opacity-30 transition-colors"
+                                                >
+                                                  <Icons.Minus className="w-5 h-5" />
+                                                </button>
+                                                <div className="text-4xl font-bold text-orange-400">{solarResult.panels}<span className="text-lg text-slate-300 ml-1">pcs</span></div>
+                                                <button
+                                                  onClick={() => setPanelAdjustment(prev => prev + 1)}
+                                                  disabled={solarResult.panels >= 48}
+                                                  className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-orange-400 disabled:opacity-30 transition-colors"
+                                                >
+                                                  <Icons.Plus className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
                                         <div><span className="text-slate-400 text-xs uppercase font-bold tracking-wider">Capacity</span><div className="text-3xl font-bold">{solarResult.systemSize.toFixed(2)}<span className="text-sm text-slate-300 ml-1">kWp</span></div></div>
                                         <div><span className="text-slate-400 text-xs uppercase font-bold tracking-wider">Base Price</span><div className="text-3xl font-bold text-blue-400">{formatCurrency(baseSystemPrice)}</div></div>
                                     </div>
@@ -396,8 +418,8 @@
                                                 <p className="font-bold text-emerald-700">Export Income</p>
                                                 <p className="text-xs text-slate-500">Capped at {financeResult.nightUsage.toFixed(2)} kWh</p>
                                                 {financeResult.burnedSolar > 0 && (
-                                                    <p className="text-[10px] text-orange-600 mt-1 font-medium bg-orange-100 inline-block px-1.5 py-0.5 rounded">
-                                                        {(solarResult.generation - financeResult.morningOffset).toFixed(2)}kWh - {financeResult.nightUsage.toFixed(2)}kWh = {financeResult.burnedSolar.toFixed(2)}kWh (Back up)
+                                                    <p className="text-[10px] text-orange-600 mt-1 font-medium bg-orange-100 inline-block px-1.5 py-0.5 rounded leading-normal">
+                                                        {(solarResult.generation - financeResult.morningOffset).toFixed(2)}kWh - {financeResult.nightUsage.toFixed(2)}kWh = {financeResult.burnedSolar.toFixed(2)}kWh ({(financeResult.burnedSolar / financeResult.nightUsage * 100).toFixed(2)}% Back up)
                                                     </p>
                                                 )}
                                             </div>

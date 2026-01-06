@@ -11,6 +11,7 @@ interface SolarSizingProps {
 const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
   const [peakHours, setPeakHours] = useState(3.4);
   const [morningUsagePercent, setMorningUsagePercent] = useState(30);
+  const [panelAdjustment, setPanelAdjustment] = useState(0);
   
   const [discountPercent, setDiscountPercent] = useState(0);
   const [fixedRebate, setFixedRebate] = useState(0); 
@@ -21,6 +22,11 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
 
   const PANEL_NAME = "JINKO SOLAR TIGER NEO N-TYPE";
   const PANEL_WATTAGE = 620;
+
+  // Reset adjustment when base usage changes significantly to prevent stale large overrides
+  useEffect(() => {
+    setPanelAdjustment(0);
+  }, [requiredKWh]);
 
   const peakHourOptions = useMemo(() => {
     const options = [];
@@ -39,11 +45,12 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
 
   const solarResult: SolarResult = useMemo(() => {
     if (requiredKWh <= 0) return { panels: 0, systemSize: 0, generation: 0 };
-    const panelsNeeded = Math.ceil(requiredKWh / monthlyKWhPerPanel);
+    const basePanels = Math.ceil(requiredKWh / monthlyKWhPerPanel);
+    const panelsNeeded = Math.max(8, Math.min(48, basePanels + panelAdjustment));
     const systemSizeKWp = (panelsNeeded * PANEL_WATTAGE) / 1000;
     const totalGenerationKWh = panelsNeeded * monthlyKWhPerPanel;
     return { panels: panelsNeeded, systemSize: systemSizeKWp, generation: totalGenerationKWh };
-  }, [requiredKWh, monthlyKWhPerPanel]);
+  }, [requiredKWh, monthlyKWhPerPanel, panelAdjustment]);
 
   const getSystemPrice = (panels: number) => {
     if (panels < 8 || panels > 48) return 0;
@@ -161,9 +168,27 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
                 <div>
                   <span className="text-slate-400 text-xs uppercase tracking-wider font-semibold">Recommended</span>
-                  <div className="flex items-baseline justify-center md:justify-start gap-2">
-                    <span className="text-4xl font-bold text-orange-400">{solarResult.panels}</span>
-                    <span className="text-lg font-medium text-slate-300">pcs</span>
+                  <div className="flex items-center justify-center md:justify-start gap-4 mt-1">
+                    <button
+                      onClick={() => setPanelAdjustment(prev => prev - 1)}
+                      disabled={solarResult.panels <= 8}
+                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      aria-label="Decrease panels"
+                    >
+                      <Icons.Minus className="w-5 h-5" />
+                    </button>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-bold text-orange-400">{solarResult.panels}</span>
+                      <span className="text-lg font-medium text-slate-300">pcs</span>
+                    </div>
+                    <button
+                      onClick={() => setPanelAdjustment(prev => prev + 1)}
+                      disabled={solarResult.panels >= 48}
+                      className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-orange-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      aria-label="Increase panels"
+                    >
+                      <Icons.Plus className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
                 <div>
@@ -255,8 +280,8 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                       <p className="font-bold text-emerald-700">Export Income</p>
                       <p className="text-xs text-slate-500">Capped at {financeResult.nightUsage.toFixed(2)} kWh</p>
                       {financeResult.burnedSolar > 0 && (
-                        <p className="text-[10px] text-orange-600 mt-1 font-medium bg-orange-100 inline-block px-1.5 py-0.5 rounded">
-                          {(solarResult.generation - financeResult.morningOffset).toFixed(2)}kWh - {financeResult.nightUsage.toFixed(2)}kWh = {financeResult.burnedSolar.toFixed(2)}kWh (Back up)
+                        <p className="text-[10px] text-orange-600 mt-1 font-medium bg-orange-100 inline-block px-1.5 py-0.5 rounded leading-normal">
+                          {(solarResult.generation - financeResult.morningOffset).toFixed(2)}kWh - {financeResult.nightUsage.toFixed(2)}kWh = {financeResult.burnedSolar.toFixed(2)}kWh ({(financeResult.burnedSolar / financeResult.nightUsage * 100).toFixed(2)}% Back up)
                         </p>
                       )}
                     </div>
@@ -441,7 +466,7 @@ const SolarSizing: React.FC<SolarSizingProps> = ({ requiredKWh, afaRate }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Duration (Months)</label>
-                  <select value={selectedDuration} onChange={(e) => setSelectedDuration(Number(e.target.value))} className="w-full p-3 border rounded-lg outline-none bg-white font-medium text-slate-900">
+                  <select value={selectedDuration} onChange={(e) => setSelectedDuration(Number(e.target.value))} className="w-full p-3 border rounded-lg bg-white font-medium text-slate-900">
                     {availableDurations.map(duration => <option key={duration} value={duration}>{duration} Months</option>)}
                   </select>
                   <div className="mt-3 flex items-center gap-2 text-sm font-medium text-indigo-700 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100">
